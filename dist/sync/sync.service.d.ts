@@ -2,7 +2,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { SrsService } from '../srs/srs.service';
 import { UserService } from '../user/user.service';
 import { SyncPushDto } from './dto/sync-push.dto';
-import { SyncPushResponse, SyncPullResponse } from '@vocabmaster/shared';
+import { SyncPushResponse, SyncPullResponse } from "@vocabmaster/shared";
 export declare class SyncService {
     private readonly prisma;
     private readonly srsService;

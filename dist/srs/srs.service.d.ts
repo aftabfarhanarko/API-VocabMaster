@@ -1,7 +1,7 @@
 import { PrismaService } from '../prisma/prisma.service';
 import { UserService } from '../user/user.service';
 import { ReviewCardDto } from './dto/review-card.dto';
-import { SrsRating, SrsState } from '@vocabmaster/shared';
+import { SrsRating, SrsState } from "@vocabmaster/shared";
 export declare class SrsService {
     private readonly prisma;
     private readonly userService;
@@ -41,11 +41,11 @@ export declare class SrsService {
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
+                word: string;
+                frequencyScore: number;
                 cefrLevel: import(".prisma/client").$Enums.CefrLevel;
                 category: string;
                 partOfSpeech: import(".prisma/client").$Enums.PartOfSpeech;
-                word: string;
-                frequencyScore: number;
                 englishMeaning: string;
                 banglaMeaning: string;
                 phoneticUs: string | null;

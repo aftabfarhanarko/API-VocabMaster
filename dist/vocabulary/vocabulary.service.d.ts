@@ -13,6 +13,7 @@ export declare class VocabularyService {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            nextReviewAt: Date;
             userId: string;
             wordId: string;
             state: import(".prisma/client").$Enums.SrsState;
@@ -21,7 +22,6 @@ export declare class VocabularyService {
             repetition: number;
             lapses: number;
             lastReviewedAt: Date | null;
-            nextReviewAt: Date;
         };
         note: {
             id: string;
@@ -54,11 +54,11 @@ export declare class VocabularyService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        word: string;
+        frequencyScore: number;
         cefrLevel: import(".prisma/client").$Enums.CefrLevel;
         category: string;
         partOfSpeech: import(".prisma/client").$Enums.PartOfSpeech;
-        word: string;
-        frequencyScore: number;
         englishMeaning: string;
         banglaMeaning: string;
         phoneticUs: string | null;
@@ -87,11 +87,11 @@ export declare class VocabularyService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        word: string;
+        frequencyScore: number;
         cefrLevel: import(".prisma/client").$Enums.CefrLevel;
         category: string;
         partOfSpeech: import(".prisma/client").$Enums.PartOfSpeech;
-        word: string;
-        frequencyScore: number;
         englishMeaning: string;
         banglaMeaning: string;
         phoneticUs: string | null;
@@ -119,11 +119,11 @@ export declare class VocabularyService {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        word: string;
+        frequencyScore: number;
         cefrLevel: import(".prisma/client").$Enums.CefrLevel;
         category: string;
         partOfSpeech: import(".prisma/client").$Enums.PartOfSpeech;
-        word: string;
-        frequencyScore: number;
         englishMeaning: string;
         banglaMeaning: string;
         phoneticUs: string | null;
@@ -166,6 +166,7 @@ export declare class VocabularyService {
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
+                nextReviewAt: Date;
                 userId: string;
                 wordId: string;
                 state: import(".prisma/client").$Enums.SrsState;
@@ -174,7 +175,6 @@ export declare class VocabularyService {
                 repetition: number;
                 lapses: number;
                 lastReviewedAt: Date | null;
-                nextReviewAt: Date;
             };
             note: {
                 id: string;
@@ -207,11 +207,11 @@ export declare class VocabularyService {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            word: string;
+            frequencyScore: number;
             cefrLevel: import(".prisma/client").$Enums.CefrLevel;
             category: string;
             partOfSpeech: import(".prisma/client").$Enums.PartOfSpeech;
-            word: string;
-            frequencyScore: number;
             englishMeaning: string;
             banglaMeaning: string;
             phoneticUs: string | null;

@@ -1,4 +1,4 @@
-import { SrsRating } from '@vocabmaster/shared';
+import { SrsRating } from "@vocabmaster/shared";
 export declare class ReviewCardDto {
     wordId: string;
     rating: SrsRating;

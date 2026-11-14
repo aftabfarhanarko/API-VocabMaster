@@ -1,4 +1,4 @@
-import { QuizType } from '@vocabmaster/shared';
+import { QuizType } from "@vocabmaster/shared";
 declare class QuizAnswerItemDto {
     questionId: string;
     wordId: string;

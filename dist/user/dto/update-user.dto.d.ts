@@ -1,4 +1,4 @@
-import { AccentType } from '@vocabmaster/shared';
+import { AccentType } from "@vocabmaster/shared";
 export declare class UpdateUserDto {
     fullName?: string;
     avatarUrl?: string;

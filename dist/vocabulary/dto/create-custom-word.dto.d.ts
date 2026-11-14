@@ -1,4 +1,4 @@
-import { CefrLevel, PartOfSpeech } from '@vocabmaster/shared';
+import { CefrLevel, PartOfSpeech } from "@vocabmaster/shared";
 declare class ExampleDto {
     sentenceEn: string;
     sentenceBn: string;

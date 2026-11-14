@@ -32,7 +32,6 @@
     "@nestjs/throttler": "^6.3.0",
     "@prisma/client": "^6.2.1",
     "@supabase/supabase-js": "^2.48.0",
-    "@vocabmaster/shared": "*",
     "axios": "^1.7.9",
     "bcryptjs": "^3.0.3",
     "class-transformer": "^0.5.1",

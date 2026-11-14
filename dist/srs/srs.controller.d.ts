@@ -31,11 +31,11 @@ export declare class SrsController {
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
+                word: string;
+                frequencyScore: number;
                 cefrLevel: import(".prisma/client").$Enums.CefrLevel;
                 category: string;
                 partOfSpeech: import(".prisma/client").$Enums.PartOfSpeech;
-                word: string;
-                frequencyScore: number;
                 englishMeaning: string;
                 banglaMeaning: string;
                 phoneticUs: string | null;
@@ -60,7 +60,7 @@ export declare class SrsController {
             id: string;
             wordId: any;
             word: any;
-            state: import("@vocabmaster/shared").SrsState;
+            state: import("../shared").SrsState;
             interval: number;
             repetition: number;
             easinessFactor: number;
@@ -85,7 +85,7 @@ export declare class SrsController {
         wordId: string;
         nextReviewAt: Date;
         intervalDays: number;
-        state: import("@vocabmaster/shared").SrsState.LEARNING | import("@vocabmaster/shared").SrsState.REVIEW | import("@vocabmaster/shared").SrsState.MASTERED;
+        state: import("../shared").SrsState.LEARNING | import("../shared").SrsState.REVIEW | import("../shared").SrsState.MASTERED;
         easinessFactor: number;
     }>;
     getSummary(user: AuthenticatedUser): Promise<{

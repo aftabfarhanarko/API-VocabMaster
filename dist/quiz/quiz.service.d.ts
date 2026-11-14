@@ -2,7 +2,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { UserService } from '../user/user.service';
 import { GenerateQuizDto } from './dto/generate-quiz.dto';
 import { SubmitQuizDto } from './dto/submit-quiz.dto';
-import { QuizType, QuizQuestion } from '@vocabmaster/shared';
+import { QuizType, QuizQuestion } from "@vocabmaster/shared";
 export declare class QuizService {
     private readonly prisma;
     private readonly userService;

@@ -1,4 +1,4 @@
-import { CefrLevel, PartOfSpeech, SrsState } from '@vocabmaster/shared';
+import { CefrLevel, PartOfSpeech, SrsState } from "@vocabmaster/shared";
 export declare class WordFilterDto {
     search?: string;
     cefrLevel?: CefrLevel;

@@ -1,4 +1,4 @@
-import { SrsRating } from '@vocabmaster/shared';
+import { SrsRating } from "@vocabmaster/shared";
 declare class OfflineReviewItemDto {
     clientUuid: string;
     wordId: string;

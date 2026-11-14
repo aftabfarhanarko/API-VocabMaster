@@ -5,10 +5,10 @@ import { AuthenticatedUser } from '../auth/current-user.decorator';
 export declare class QuizController {
     private readonly quizService;
     constructor(quizService: QuizService);
-    generateQuiz(dto: GenerateQuizDto): Promise<import("@vocabmaster/shared").QuizQuestion[]>;
+    generateQuiz(dto: GenerateQuizDto): Promise<import("../shared").QuizQuestion[]>;
     submitQuiz(user: AuthenticatedUser, dto: SubmitQuizDto): Promise<{
         id: string;
-        quizType: import("@vocabmaster/shared").QuizType;
+        quizType: import("../shared").QuizType;
         totalQuestions: number;
         correctCount: number;
         scorePercentage: number;

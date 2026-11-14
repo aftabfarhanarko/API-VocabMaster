@@ -1,25 +1,18 @@
+# Standalone Backend Dockerfile for Render / Railway / Cloud Deployments
 FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Copy root and package manifests
+# Copy package manifests
 COPY package*.json ./
-COPY packages/shared/package*.json ./packages/shared/
-COPY backend/package*.json ./backend/
 
-# Install dependencies
-RUN npm ci
+# Install all dependencies
+RUN npm install
 
-# Copy source
-COPY packages/shared ./packages/shared
-COPY backend ./backend
+# Copy all source files and prisma schema
+COPY . .
 
-# Build shared package
-WORKDIR /app/packages/shared
-RUN npm run build
-
-# Generate Prisma Client & Build Backend
-WORKDIR /app/backend
+# Generate Prisma Client & Build NestJS app
 RUN npx prisma generate
 RUN npm run build
 
@@ -30,17 +23,12 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 COPY package*.json ./
-COPY packages/shared/package*.json ./packages/shared/
-COPY backend/package*.json ./backend/
+RUN npm install --omit=dev
 
-RUN npm ci --omit=dev
-
-COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
-COPY --from=builder /app/backend/dist ./backend/dist
-COPY --from=builder /app/backend/prisma ./backend/prisma
-COPY --from=builder /app/backend/node_modules/.prisma ./backend/node_modules/.prisma
-
-WORKDIR /app/backend
+# Copy built application and prisma client
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 EXPOSE 4000
 CMD ["node", "dist/main"]
