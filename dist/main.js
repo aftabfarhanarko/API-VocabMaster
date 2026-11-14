@@ -3,14 +3,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const core_1 = require("@nestjs/core");
 const common_1 = require("@nestjs/common");
 const swagger_1 = require("@nestjs/swagger");
-const cookie_parser_1 = require("cookie-parser");
+const cookieParser = require('cookie-parser');
 const app_module_1 = require("./app.module");
 const http_exception_filter_1 = require("./common/filters/http-exception.filter");
 const transform_interceptor_1 = require("./common/interceptors/transform.interceptor");
 async function bootstrap() {
     const logger = new common_1.Logger('Bootstrap');
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
-    app.use((0, cookie_parser_1.default)());
+    app.use(cookieParser());
     app.setGlobalPrefix('api');
     const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000';
     app.enableCors({
