@@ -1,0 +1,97 @@
+import { PrismaService } from '../prisma/prisma.service';
+import { UpdateUserDto } from './dto/update-user.dto';
+export declare class UserService {
+    private readonly prisma;
+    constructor(prisma: PrismaService);
+    getProfile(userId: string): Promise<{
+        email: string;
+        id: string;
+        supabaseId: string | null;
+        passwordHash: string | null;
+        refreshTokenHash: string | null;
+        fullName: string | null;
+        avatarUrl: string | null;
+        role: import(".prisma/client").$Enums.Role;
+        dailyWordGoal: number;
+        preferredAccent: import(".prisma/client").$Enums.AccentType;
+        targetLanguage: string;
+        themePreference: string;
+        soundEnabled: boolean;
+        autoPlayAudio: boolean;
+        reminderEnabled: boolean;
+        reminderTime: string;
+        currentStreak: number;
+        longestStreak: number;
+        lastActiveDate: Date | null;
+        totalPoints: number;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+    updateProfile(userId: string, dto: UpdateUserDto): Promise<{
+        email: string;
+        id: string;
+        supabaseId: string | null;
+        passwordHash: string | null;
+        refreshTokenHash: string | null;
+        fullName: string | null;
+        avatarUrl: string | null;
+        role: import(".prisma/client").$Enums.Role;
+        dailyWordGoal: number;
+        preferredAccent: import(".prisma/client").$Enums.AccentType;
+        targetLanguage: string;
+        themePreference: string;
+        soundEnabled: boolean;
+        autoPlayAudio: boolean;
+        reminderEnabled: boolean;
+        reminderTime: string;
+        currentStreak: number;
+        longestStreak: number;
+        lastActiveDate: Date | null;
+        totalPoints: number;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+    recordActivity(userId: string, activity: {
+        wordsReviewed?: number;
+        wordsLearned?: number;
+        quizzesTaken?: number;
+        timeSpentSec?: number;
+    }): Promise<void>;
+    getRecentActivity(userId: string, days?: number): Promise<{
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        userId: string;
+        date: string;
+        wordsReviewed: number;
+        wordsLearned: number;
+        quizzesTaken: number;
+        timeSpentSec: number;
+        goalReached: boolean;
+    }[]>;
+    setDailyGoal(userId: string, dailyWordGoal: number): Promise<{
+        dailyGoal: any;
+        wordsReviewedToday: number;
+        wordsLearnedToday: number;
+        totalCompletedToday: number;
+        remainingWords: number;
+        completionPercentage: number;
+        goalReached: boolean;
+        streak: any;
+        longestStreak: any;
+        motivationalMessage: string;
+    }>;
+    getDailyGoalProgress(userId: string): Promise<{
+        dailyGoal: any;
+        wordsReviewedToday: number;
+        wordsLearnedToday: number;
+        totalCompletedToday: number;
+        remainingWords: number;
+        completionPercentage: number;
+        goalReached: boolean;
+        streak: any;
+        longestStreak: any;
+        motivationalMessage: string;
+    }>;
+    private buildGoalProgressResponse;
+}
