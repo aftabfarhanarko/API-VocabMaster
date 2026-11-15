@@ -127,9 +127,39 @@ export class AuthService {
     const email = dto.email.trim().toLowerCase();
 
     // 1. Find user in database
-    const user = await this.prisma.user.findUnique({
+    let user = await this.prisma.user.findUnique({
       where: { email },
     });
+
+    // Special handler for demo account
+    if (email === 'demo@vocabmaster.app' && (dto.password === 'demo123456' || dto.password === 'demo')) {
+      if (!user) {
+        const passwordHash = await bcrypt.hash('demo123456', 10);
+        user = await this.prisma.user.create({
+          data: {
+            supabaseId: 'demo-user-001',
+            email: 'demo@vocabmaster.app',
+            fullName: 'Demo Vocab Master',
+            passwordHash,
+            dailyWordGoal: 10,
+            preferredAccent: 'US',
+            targetLanguage: 'bn',
+            themePreference: 'system',
+            soundEnabled: true,
+            currentStreak: 5,
+            longestStreak: 12,
+            lastActiveDate: new Date(),
+            totalPoints: 350,
+          },
+        });
+      } else if (!user.passwordHash) {
+        const passwordHash = await bcrypt.hash('demo123456', 10);
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: { passwordHash },
+        });
+      }
+    }
 
     if (!user || !user.passwordHash) {
       if (this.auditService) {
