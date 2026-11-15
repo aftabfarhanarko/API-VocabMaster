@@ -8,14 +8,21 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UserService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
+const audit_service_1 = require("../audit/audit.service");
+const audit_actions_1 = require("../audit/audit-actions");
 let UserService = class UserService {
     prisma;
-    constructor(prisma) {
+    auditService;
+    constructor(prisma, auditService) {
         this.prisma = prisma;
+        this.auditService = auditService;
     }
     async getProfile(userId) {
         const user = await this.prisma.user.findUnique({
@@ -33,12 +40,22 @@ let UserService = class UserService {
         if (!exists) {
             throw new common_1.NotFoundException(`User profile for ID '${userId}' not found.`);
         }
-        return await this.prisma.user.update({
+        const updated = await this.prisma.user.update({
             where: { id: userId },
             data: {
                 ...dto,
             },
         });
+        if (this.auditService) {
+            this.auditService.logEvent({
+                action: audit_actions_1.AuditAction.USER_PROFILE_UPDATED,
+                userId,
+                entity: 'USER',
+                entityId: userId,
+                metadata: dto,
+            });
+        }
+        return updated;
     }
     async recordActivity(userId, activity) {
         const todayStr = new Date().toISOString().split('T')[0];
@@ -132,6 +149,15 @@ let UserService = class UserService {
                 data: { goalReached },
             });
         }
+        if (this.auditService) {
+            this.auditService.logEvent({
+                action: audit_actions_1.AuditAction.DAILY_GOAL_UPDATED,
+                userId,
+                entity: 'USER',
+                entityId: userId,
+                metadata: { dailyWordGoal },
+            });
+        }
         return this.buildGoalProgressResponse(user, totalCompleted, wordsReviewed, wordsLearned, goalReached);
     }
     async getDailyGoalProgress(userId) {
@@ -188,6 +214,8 @@ let UserService = class UserService {
 exports.UserService = UserService;
 exports.UserService = UserService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __param(1, (0, common_1.Optional)()),
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        audit_service_1.AuditService])
 ], UserService);
 //# sourceMappingURL=user.service.js.map

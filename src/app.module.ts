@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { PrismaModule } from './prisma/prisma.module';
+import { AuditModule } from './audit/audit.module';
+import { AuditInterceptor } from './audit/audit.interceptor';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
@@ -40,6 +43,13 @@ import { SyncModule } from './sync/sync.module';
     DashboardModule,
     SyncModule,
     HealthModule,
+    AuditModule,
+  ],
+  providers: [
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: AuditInterceptor,
+    },
   ],
 })
 export class AppModule {}

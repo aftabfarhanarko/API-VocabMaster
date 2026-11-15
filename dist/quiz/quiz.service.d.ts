@@ -20,8 +20,8 @@ export declare class QuizService {
         completedAt: string;
     }>;
     getQuizHistory(userId: string): Promise<{
-        id: string;
         userId: string;
+        id: string;
         quizType: import(".prisma/client").$Enums.QuizType;
         durationSeconds: number;
         totalQuestions: number;

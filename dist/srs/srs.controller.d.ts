@@ -18,11 +18,11 @@ export declare class SrsController {
                     wordId: string;
                 }[];
                 notes: {
+                    userId: string;
                     id: string;
                     createdAt: Date;
                     updatedAt: Date;
                     content: string;
-                    userId: string;
                     wordId: string;
                     mnemonic: string | null;
                     personalExample: string | null;

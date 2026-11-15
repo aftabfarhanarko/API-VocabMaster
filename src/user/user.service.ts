@@ -1,10 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { AuditService } from '../audit/audit.service';
+import { AuditAction } from '../audit/audit-actions';
 
 @Injectable()
 export class UserService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly auditService?: AuditService
+  ) {}
 
   async getProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
@@ -27,12 +32,24 @@ export class UserService {
       throw new NotFoundException(`User profile for ID '${userId}' not found.`);
     }
 
-    return await this.prisma.user.update({
+    const updated = await this.prisma.user.update({
       where: { id: userId },
       data: {
         ...dto,
       },
     });
+
+    if (this.auditService) {
+      this.auditService.logEvent({
+        action: AuditAction.USER_PROFILE_UPDATED,
+        userId,
+        entity: 'USER',
+        entityId: userId,
+        metadata: dto,
+      });
+    }
+
+    return updated;
   }
 
   async recordActivity(
@@ -149,6 +166,16 @@ export class UserService {
       await this.prisma.dailyActivityLog.update({
         where: { id: todayLog.id },
         data: { goalReached },
+      });
+    }
+
+    if (this.auditService) {
+      this.auditService.logEvent({
+        action: AuditAction.DAILY_GOAL_UPDATED,
+        userId,
+        entity: 'USER',
+        entityId: userId,
+        metadata: { dailyWordGoal },
       });
     }
 

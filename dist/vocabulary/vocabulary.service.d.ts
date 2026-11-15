@@ -2,19 +2,21 @@ import { PrismaService } from '../prisma/prisma.service';
 import { DictionaryService } from '../dictionary/dictionary.service';
 import { WordFilterDto } from './dto/word-filter.dto';
 import { CreateCustomWordDto } from './dto/create-custom-word.dto';
+import { AuditService } from '../audit/audit.service';
 export declare class VocabularyService {
     private readonly prisma;
     private readonly dictionaryService;
+    private readonly auditService?;
     private readonly logger;
-    constructor(prisma: PrismaService, dictionaryService: DictionaryService);
+    constructor(prisma: PrismaService, dictionaryService: DictionaryService, auditService?: AuditService);
     findWords(userId: string, query: WordFilterDto): Promise<any>;
     getWordDetails(wordOrId: string, userId: string): Promise<{
         userProgress: {
+            userId: string;
             id: string;
             createdAt: Date;
             updatedAt: Date;
             nextReviewAt: Date;
-            userId: string;
             wordId: string;
             state: import(".prisma/client").$Enums.SrsState;
             easinessFactor: number;
@@ -24,11 +26,11 @@ export declare class VocabularyService {
             lastReviewedAt: Date | null;
         };
         note: {
+            userId: string;
             id: string;
             createdAt: Date;
             updatedAt: Date;
             content: string;
-            userId: string;
             wordId: string;
             mnemonic: string | null;
             personalExample: string | null;
@@ -42,11 +44,11 @@ export declare class VocabularyService {
             wordId: string;
         }[];
         notes: {
+            userId: string;
             id: string;
             createdAt: Date;
             updatedAt: Date;
             content: string;
-            userId: string;
             wordId: string;
             mnemonic: string | null;
             personalExample: string | null;
@@ -163,11 +165,11 @@ export declare class VocabularyService {
     }): Promise<{
         data: {
             userProgress: {
+                userId: string;
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
                 nextReviewAt: Date;
-                userId: string;
                 wordId: string;
                 state: import(".prisma/client").$Enums.SrsState;
                 easinessFactor: number;
@@ -177,11 +179,11 @@ export declare class VocabularyService {
                 lastReviewedAt: Date | null;
             };
             note: {
+                userId: string;
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
                 content: string;
-                userId: string;
                 wordId: string;
                 mnemonic: string | null;
                 personalExample: string | null;
@@ -195,11 +197,11 @@ export declare class VocabularyService {
                 wordId: string;
             }[];
             notes: {
+                userId: string;
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
                 content: string;
-                userId: string;
                 wordId: string;
                 mnemonic: string | null;
                 personalExample: string | null;

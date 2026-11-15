@@ -12,11 +12,11 @@ export declare class CollectionController {
             items: number;
         };
         description: string | null;
-        name: string;
+        userId: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        userId: string;
+        name: string;
         color: string | null;
         icon: string | null;
         isPublic: boolean;
@@ -27,11 +27,11 @@ export declare class CollectionController {
         };
     } & {
         description: string | null;
-        name: string;
+        userId: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        userId: string;
+        name: string;
         color: string | null;
         icon: string | null;
         isPublic: boolean;
@@ -110,22 +110,22 @@ export declare class CollectionController {
             addedAt: Date;
         })[];
         description: string | null;
-        name: string;
+        userId: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        userId: string;
+        name: string;
         color: string | null;
         icon: string | null;
         isPublic: boolean;
     }>;
     updateCollection(user: AuthenticatedUser, id: string, dto: UpdateCollectionDto): Promise<{
         description: string | null;
-        name: string;
+        userId: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        userId: string;
+        name: string;
         color: string | null;
         icon: string | null;
         isPublic: boolean;

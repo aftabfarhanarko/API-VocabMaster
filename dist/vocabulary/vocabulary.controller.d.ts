@@ -14,11 +14,11 @@ export declare class VocabularyController {
     getBookmarkedWords(user: AuthenticatedUser, page?: string, limit?: string, search?: string, cefrLevel?: string): Promise<{
         data: {
             userProgress: {
+                userId: string;
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
                 nextReviewAt: Date;
-                userId: string;
                 wordId: string;
                 state: import(".prisma/client").$Enums.SrsState;
                 easinessFactor: number;
@@ -28,11 +28,11 @@ export declare class VocabularyController {
                 lastReviewedAt: Date | null;
             };
             note: {
+                userId: string;
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
                 content: string;
-                userId: string;
                 wordId: string;
                 mnemonic: string | null;
                 personalExample: string | null;
@@ -46,11 +46,11 @@ export declare class VocabularyController {
                 wordId: string;
             }[];
             notes: {
+                userId: string;
                 id: string;
                 createdAt: Date;
                 updatedAt: Date;
                 content: string;
-                userId: string;
                 wordId: string;
                 mnemonic: string | null;
                 personalExample: string | null;
@@ -129,11 +129,11 @@ export declare class VocabularyController {
     }>;
     getWordDetails(user: AuthenticatedUser, wordOrId: string): Promise<{
         userProgress: {
+            userId: string;
             id: string;
             createdAt: Date;
             updatedAt: Date;
             nextReviewAt: Date;
-            userId: string;
             wordId: string;
             state: import(".prisma/client").$Enums.SrsState;
             easinessFactor: number;
@@ -143,11 +143,11 @@ export declare class VocabularyController {
             lastReviewedAt: Date | null;
         };
         note: {
+            userId: string;
             id: string;
             createdAt: Date;
             updatedAt: Date;
             content: string;
-            userId: string;
             wordId: string;
             mnemonic: string | null;
             personalExample: string | null;
@@ -161,11 +161,11 @@ export declare class VocabularyController {
             wordId: string;
         }[];
         notes: {
+            userId: string;
             id: string;
             createdAt: Date;
             updatedAt: Date;
             content: string;
-            userId: string;
             wordId: string;
             mnemonic: string | null;
             personalExample: string | null;

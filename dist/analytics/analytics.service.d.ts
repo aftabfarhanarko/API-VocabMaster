@@ -23,10 +23,10 @@ export declare class AnalyticsService {
         cefrBreakdown: Record<string, number>;
         categoryBreakdown: Record<string, number>;
         recentActivity: {
+            userId: string;
             id: string;
             createdAt: Date;
             updatedAt: Date;
-            userId: string;
             date: string;
             wordsReviewed: number;
             wordsLearned: number;

@@ -4,6 +4,7 @@ import {
   UnauthorizedException,
   NotFoundException,
   Logger,
+  Optional,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
@@ -12,6 +13,8 @@ import * as jwt from 'jsonwebtoken';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { AuditService } from '../audit/audit.service';
+import { AuditAction } from '../audit/audit-actions';
 
 export interface JwtPayload {
   sub: string;
@@ -30,7 +33,8 @@ export class AuthService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
+    @Optional() private readonly auditService?: AuditService
   ) {
     this.accessSecret =
       this.configService.get<string>('JWT_ACCESS_SECRET') ||
@@ -95,6 +99,17 @@ export class AuthService {
       this.setCookies(res, tokens.accessToken, tokens.refreshToken);
     }
 
+    // 7. Audit log event
+    if (this.auditService) {
+      this.auditService.logEvent({
+        action: AuditAction.AUTH_REGISTER,
+        userId: user.id,
+        entity: 'USER',
+        entityId: user.id,
+        metadata: { email: user.email, name: user.fullName },
+      });
+    }
+
     return {
       message: 'Account registered successfully!',
       user: this.sanitizeUser(user),
@@ -117,12 +132,27 @@ export class AuthService {
     });
 
     if (!user || !user.passwordHash) {
+      if (this.auditService) {
+        this.auditService.logEvent({
+          action: AuditAction.AUTH_LOGIN_FAILED,
+          status: 'FAILURE',
+          metadata: { email, reason: 'User not found' },
+        });
+      }
       throw new UnauthorizedException('Invalid email or password. Please try again.');
     }
 
     // 2. Verify password with bcrypt
     const passwordMatch = await bcrypt.compare(dto.password, user.passwordHash);
     if (!passwordMatch) {
+      if (this.auditService) {
+        this.auditService.logEvent({
+          action: AuditAction.AUTH_LOGIN_FAILED,
+          userId: user.id,
+          status: 'FAILURE',
+          metadata: { email, reason: 'Incorrect password' },
+        });
+      }
       throw new UnauthorizedException('Invalid email or password. Please try again.');
     }
 
@@ -142,6 +172,17 @@ export class AuthService {
     // 5. Set HTTP-only session cookies
     if (res) {
       this.setCookies(res, tokens.accessToken, tokens.refreshToken);
+    }
+
+    // 6. Audit log event
+    if (this.auditService) {
+      this.auditService.logEvent({
+        action: AuditAction.AUTH_LOGIN,
+        userId: user.id,
+        entity: 'USER',
+        entityId: user.id,
+        metadata: { email: user.email },
+      });
     }
 
     return {
@@ -212,6 +253,15 @@ export class AuthService {
       this.setCookies(res, tokens.accessToken, tokens.refreshToken);
     }
 
+    if (this.auditService) {
+      this.auditService.logEvent({
+        action: AuditAction.AUTH_REFRESH,
+        userId: user.id,
+        entity: 'USER',
+        entityId: user.id,
+      });
+    }
+
     return {
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
@@ -235,6 +285,15 @@ export class AuthService {
 
     if (res) {
       this.clearCookies(res);
+    }
+
+    if (this.auditService) {
+      this.auditService.logEvent({
+        action: AuditAction.AUTH_LOGOUT,
+        userId,
+        entity: 'USER',
+        entityId: userId,
+      });
     }
 
     return {
@@ -312,7 +371,7 @@ export class AuthService {
     res.cookie('access_token', accessToken, {
       httpOnly: true,
       secure: isProduction,
-      sameSite: 'lax',
+      sameSite: isProduction ? 'none' : 'lax',
       path: '/',
       maxAge: 3600 * 1000, // 1 hour
     });
@@ -320,7 +379,7 @@ export class AuthService {
     res.cookie('refresh_token', refreshToken, {
       httpOnly: true,
       secure: isProduction,
-      sameSite: 'lax',
+      sameSite: isProduction ? 'none' : 'lax',
       path: '/',
       maxAge: 7 * 24 * 3600 * 1000, // 7 days
     });
@@ -330,8 +389,17 @@ export class AuthService {
    * Helper: Clear session cookies on logout
    */
   private clearCookies(res: Response) {
-    res.clearCookie('access_token', { path: '/' });
-    res.clearCookie('refresh_token', { path: '/' });
+    const isProduction = process.env.NODE_ENV === 'production';
+    res.clearCookie('access_token', {
+      path: '/',
+      sameSite: isProduction ? 'none' : 'lax',
+      secure: isProduction,
+    });
+    res.clearCookie('refresh_token', {
+      path: '/',
+      sameSite: isProduction ? 'none' : 'lax',
+      secure: isProduction,
+    });
   }
 
   /**

@@ -5,21 +5,21 @@ export declare class NotesController {
     private readonly notesService;
     constructor(notesService: NotesService);
     getNote(user: AuthenticatedUser, wordId: string): Promise<{
+        userId: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         content: string;
-        userId: string;
         wordId: string;
         mnemonic: string | null;
         personalExample: string | null;
     }>;
     saveNote(user: AuthenticatedUser, wordId: string, dto: SaveNoteDto): Promise<{
+        userId: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
         content: string;
-        userId: string;
         wordId: string;
         mnemonic: string | null;
         personalExample: string | null;

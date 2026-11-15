@@ -6,9 +6,9 @@ export declare class UserController {
     private readonly userService;
     constructor(userService: UserService);
     getProfile(user: AuthenticatedUser): Promise<{
-        email: string;
         id: string;
         supabaseId: string | null;
+        email: string;
         passwordHash: string | null;
         refreshTokenHash: string | null;
         fullName: string | null;
@@ -30,9 +30,9 @@ export declare class UserController {
         updatedAt: Date;
     }>;
     updateProfile(user: AuthenticatedUser, dto: UpdateUserDto): Promise<{
-        email: string;
         id: string;
         supabaseId: string | null;
+        email: string;
         passwordHash: string | null;
         refreshTokenHash: string | null;
         fullName: string | null;
@@ -78,10 +78,10 @@ export declare class UserController {
         motivationalMessage: string;
     }>;
     getActivity(user: AuthenticatedUser): Promise<{
+        userId: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        userId: string;
         date: string;
         wordsReviewed: number;
         wordsLearned: number;

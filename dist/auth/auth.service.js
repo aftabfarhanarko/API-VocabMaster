@@ -41,6 +41,9 @@ var __importStar = (this && this.__importStar) || (function () {
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
 var AuthService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthService = void 0;
@@ -49,17 +52,21 @@ const config_1 = require("@nestjs/config");
 const bcrypt = __importStar(require("bcryptjs"));
 const jwt = __importStar(require("jsonwebtoken"));
 const prisma_service_1 = require("../prisma/prisma.service");
+const audit_service_1 = require("../audit/audit.service");
+const audit_actions_1 = require("../audit/audit-actions");
 let AuthService = AuthService_1 = class AuthService {
     prisma;
     configService;
+    auditService;
     logger = new common_1.Logger(AuthService_1.name);
     accessSecret;
     refreshSecret;
     accessExpiresIn;
     refreshExpiresIn;
-    constructor(prisma, configService) {
+    constructor(prisma, configService, auditService) {
         this.prisma = prisma;
         this.configService = configService;
+        this.auditService = auditService;
         this.accessSecret =
             this.configService.get('JWT_ACCESS_SECRET') ||
                 'vocabmaster-super-secure-access-jwt-secret-key-2026-prod';
@@ -103,6 +110,15 @@ let AuthService = AuthService_1 = class AuthService {
         if (res) {
             this.setCookies(res, tokens.accessToken, tokens.refreshToken);
         }
+        if (this.auditService) {
+            this.auditService.logEvent({
+                action: audit_actions_1.AuditAction.AUTH_REGISTER,
+                userId: user.id,
+                entity: 'USER',
+                entityId: user.id,
+                metadata: { email: user.email, name: user.fullName },
+            });
+        }
         return {
             message: 'Account registered successfully!',
             user: this.sanitizeUser(user),
@@ -118,10 +134,25 @@ let AuthService = AuthService_1 = class AuthService {
             where: { email },
         });
         if (!user || !user.passwordHash) {
+            if (this.auditService) {
+                this.auditService.logEvent({
+                    action: audit_actions_1.AuditAction.AUTH_LOGIN_FAILED,
+                    status: 'FAILURE',
+                    metadata: { email, reason: 'User not found' },
+                });
+            }
             throw new common_1.UnauthorizedException('Invalid email or password. Please try again.');
         }
         const passwordMatch = await bcrypt.compare(dto.password, user.passwordHash);
         if (!passwordMatch) {
+            if (this.auditService) {
+                this.auditService.logEvent({
+                    action: audit_actions_1.AuditAction.AUTH_LOGIN_FAILED,
+                    userId: user.id,
+                    status: 'FAILURE',
+                    metadata: { email, reason: 'Incorrect password' },
+                });
+            }
             throw new common_1.UnauthorizedException('Invalid email or password. Please try again.');
         }
         const tokens = this.generateTokenPair(user.id, user.email, user.role);
@@ -135,6 +166,15 @@ let AuthService = AuthService_1 = class AuthService {
         });
         if (res) {
             this.setCookies(res, tokens.accessToken, tokens.refreshToken);
+        }
+        if (this.auditService) {
+            this.auditService.logEvent({
+                action: audit_actions_1.AuditAction.AUTH_LOGIN,
+                userId: user.id,
+                entity: 'USER',
+                entityId: user.id,
+                metadata: { email: user.email },
+            });
         }
         return {
             message: 'Logged in successfully!',
@@ -182,6 +222,14 @@ let AuthService = AuthService_1 = class AuthService {
         if (res) {
             this.setCookies(res, tokens.accessToken, tokens.refreshToken);
         }
+        if (this.auditService) {
+            this.auditService.logEvent({
+                action: audit_actions_1.AuditAction.AUTH_REFRESH,
+                userId: user.id,
+                entity: 'USER',
+                entityId: user.id,
+            });
+        }
         return {
             accessToken: tokens.accessToken,
             refreshToken: tokens.refreshToken,
@@ -201,6 +249,14 @@ let AuthService = AuthService_1 = class AuthService {
         }
         if (res) {
             this.clearCookies(res);
+        }
+        if (this.auditService) {
+            this.auditService.logEvent({
+                action: audit_actions_1.AuditAction.AUTH_LOGOUT,
+                userId,
+                entity: 'USER',
+                entityId: userId,
+            });
         }
         return {
             success: true,
@@ -258,21 +314,30 @@ let AuthService = AuthService_1 = class AuthService {
         res.cookie('access_token', accessToken, {
             httpOnly: true,
             secure: isProduction,
-            sameSite: 'lax',
+            sameSite: isProduction ? 'none' : 'lax',
             path: '/',
             maxAge: 3600 * 1000,
         });
         res.cookie('refresh_token', refreshToken, {
             httpOnly: true,
             secure: isProduction,
-            sameSite: 'lax',
+            sameSite: isProduction ? 'none' : 'lax',
             path: '/',
             maxAge: 7 * 24 * 3600 * 1000,
         });
     }
     clearCookies(res) {
-        res.clearCookie('access_token', { path: '/' });
-        res.clearCookie('refresh_token', { path: '/' });
+        const isProduction = process.env.NODE_ENV === 'production';
+        res.clearCookie('access_token', {
+            path: '/',
+            sameSite: isProduction ? 'none' : 'lax',
+            secure: isProduction,
+        });
+        res.clearCookie('refresh_token', {
+            path: '/',
+            sameSite: isProduction ? 'none' : 'lax',
+            secure: isProduction,
+        });
     }
     sanitizeUser(user) {
         const { passwordHash, refreshTokenHash, ...safe } = user;
@@ -282,7 +347,9 @@ let AuthService = AuthService_1 = class AuthService {
 exports.AuthService = AuthService;
 exports.AuthService = AuthService = AuthService_1 = __decorate([
     (0, common_1.Injectable)(),
+    __param(2, (0, common_1.Optional)()),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
-        config_1.ConfigService])
+        config_1.ConfigService,
+        audit_service_1.AuditService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

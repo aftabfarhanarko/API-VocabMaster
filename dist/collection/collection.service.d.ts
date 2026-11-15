@@ -10,11 +10,11 @@ export declare class CollectionService {
             items: number;
         };
         description: string | null;
-        name: string;
+        userId: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        userId: string;
+        name: string;
         color: string | null;
         icon: string | null;
         isPublic: boolean;
@@ -25,11 +25,11 @@ export declare class CollectionService {
         };
     } & {
         description: string | null;
-        name: string;
+        userId: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        userId: string;
+        name: string;
         color: string | null;
         icon: string | null;
         isPublic: boolean;
@@ -108,22 +108,22 @@ export declare class CollectionService {
             addedAt: Date;
         })[];
         description: string | null;
-        name: string;
+        userId: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        userId: string;
+        name: string;
         color: string | null;
         icon: string | null;
         isPublic: boolean;
     }>;
     updateCollection(userId: string, collectionId: string, dto: UpdateCollectionDto): Promise<{
         description: string | null;
-        name: string;
+        userId: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        userId: string;
+        name: string;
         color: string | null;
         icon: string | null;
         isPublic: boolean;

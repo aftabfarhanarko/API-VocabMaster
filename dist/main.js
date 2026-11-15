@@ -12,12 +12,43 @@ async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     app.use(cookieParser());
     app.setGlobalPrefix('api');
-    const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000';
+    const envOrigins = (process.env.CORS_ORIGIN || '')
+        .split(',')
+        .map((o) => o.trim().replace(/\/$/, ''))
+        .filter(Boolean);
+    const allowedOrigins = [
+        'https://vocab-master-ivory-mu.vercel.app',
+        'https://vocabmaster.vercel.app',
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+        ...envOrigins,
+    ];
     app.enableCors({
-        origin: [corsOrigin, 'http://localhost:3000', 'http://127.0.0.1:3000'],
+        origin: (origin, callback) => {
+            if (!origin) {
+                return callback(null, true);
+            }
+            const normalizedOrigin = origin.replace(/\/$/, '');
+            const isAllowed = allowedOrigins.includes(normalizedOrigin) ||
+                normalizedOrigin.endsWith('.vercel.app') ||
+                process.env.NODE_ENV !== 'production';
+            if (isAllowed) {
+                callback(null, true);
+            }
+            else {
+                logger.warn(`CORS blocked for origin: ${origin}`);
+                callback(new Error(`Origin ${origin} is not allowed by CORS`));
+            }
+        },
         credentials: true,
-        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
+        allowedHeaders: [
+            'Content-Type',
+            'Authorization',
+            'X-Requested-With',
+            'Accept',
+            'Origin',
+        ],
     });
     app.useGlobalPipes(new common_1.ValidationPipe({
         whitelist: true,

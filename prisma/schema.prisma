@@ -83,6 +83,7 @@ model User {
   activityLogs     DailyActivityLog[]
   notes            WordNote[]
   bookmarks        Bookmark[]
+  auditLogs        AuditLog[]
 
   @@index([supabaseId])
   @@index([email])
@@ -270,4 +271,24 @@ model Bookmark {
   @@index([wordId])
   @@index([createdAt])
 }
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  action      String   // e.g. AUTH_LOGIN, AUTH_REGISTER, DAILY_GOAL_UPDATED, WORD_BOOKMARKED
+  entity      String?  // e.g. USER, VOCABULARY, COLLECTION, QUIZ
+  entityId    String?
+  status      String   @default("SUCCESS") // SUCCESS, FAILURE, WARNING
+  ipAddress   String?
+  userAgent   String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
 

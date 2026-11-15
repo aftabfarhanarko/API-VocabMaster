@@ -3,6 +3,7 @@ import { Response } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { AuditService } from '../audit/audit.service';
 export interface JwtPayload {
     sub: string;
     email: string;
@@ -12,12 +13,13 @@ export interface JwtPayload {
 export declare class AuthService {
     private readonly prisma;
     private readonly configService;
+    private readonly auditService?;
     private readonly logger;
     private readonly accessSecret;
     private readonly refreshSecret;
     private readonly accessExpiresIn;
     private readonly refreshExpiresIn;
-    constructor(prisma: PrismaService, configService: ConfigService);
+    constructor(prisma: PrismaService, configService: ConfigService, auditService?: AuditService);
     register(dto: RegisterDto, res?: Response): Promise<{
         message: string;
         user: any;

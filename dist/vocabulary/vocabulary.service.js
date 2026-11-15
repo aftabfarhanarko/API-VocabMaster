@@ -8,19 +8,26 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
 var VocabularyService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.VocabularyService = void 0;
 const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const dictionary_service_1 = require("../dictionary/dictionary.service");
+const audit_service_1 = require("../audit/audit.service");
+const audit_actions_1 = require("../audit/audit-actions");
 let VocabularyService = VocabularyService_1 = class VocabularyService {
     prisma;
     dictionaryService;
+    auditService;
     logger = new common_1.Logger(VocabularyService_1.name);
-    constructor(prisma, dictionaryService) {
+    constructor(prisma, dictionaryService, auditService) {
         this.prisma = prisma;
         this.dictionaryService = dictionaryService;
+        this.auditService = auditService;
     }
     async findWords(userId, query) {
         const { search, cefrLevel, category, partOfSpeech, srsState, collectionId, page = 1, limit = 20, sortBy = 'frequencyScore', sortOrder = 'desc', source = 'database', } = query;
@@ -170,7 +177,7 @@ let VocabularyService = VocabularyService_1 = class VocabularyService {
         if (existing) {
             throw new common_1.BadRequestException(`Custom word '${dto.word}' already exists in your vocabulary.`);
         }
-        return await this.prisma.vocabularyWord.create({
+        const created = await this.prisma.vocabularyWord.create({
             data: {
                 word: dto.word.trim(),
                 normalizedWord: normalized,
@@ -196,6 +203,16 @@ let VocabularyService = VocabularyService_1 = class VocabularyService {
                 examples: true,
             },
         });
+        if (this.auditService) {
+            this.auditService.logEvent({
+                action: audit_actions_1.AuditAction.CUSTOM_WORD_CREATED,
+                userId,
+                entity: 'VOCABULARY',
+                entityId: created.id,
+                metadata: { word: created.word, cefrLevel: created.cefrLevel },
+            });
+        }
+        return created;
     }
     async getCategories() {
         const categories = [
@@ -232,6 +249,15 @@ let VocabularyService = VocabularyService_1 = class VocabularyService {
             await this.prisma.bookmark.delete({
                 where: { id: existing.id },
             });
+            if (this.auditService) {
+                this.auditService.logEvent({
+                    action: audit_actions_1.AuditAction.WORD_UNBOOKMARKED,
+                    userId,
+                    entity: 'VOCABULARY',
+                    entityId: word.id,
+                    metadata: { word: word.word },
+                });
+            }
             return {
                 bookmarked: false,
                 wordId: word.id,
@@ -246,6 +272,15 @@ let VocabularyService = VocabularyService_1 = class VocabularyService {
                     wordId: word.id,
                 },
             });
+            if (this.auditService) {
+                this.auditService.logEvent({
+                    action: audit_actions_1.AuditAction.WORD_BOOKMARKED,
+                    userId,
+                    entity: 'VOCABULARY',
+                    entityId: word.id,
+                    metadata: { word: word.word },
+                });
+            }
             return {
                 bookmarked: true,
                 wordId: word.id,
@@ -358,7 +393,9 @@ let VocabularyService = VocabularyService_1 = class VocabularyService {
 exports.VocabularyService = VocabularyService;
 exports.VocabularyService = VocabularyService = VocabularyService_1 = __decorate([
     (0, common_1.Injectable)(),
+    __param(2, (0, common_1.Optional)()),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService,
-        dictionary_service_1.DictionaryService])
+        dictionary_service_1.DictionaryService,
+        audit_service_1.AuditService])
 ], VocabularyService);
 //# sourceMappingURL=vocabulary.service.js.map

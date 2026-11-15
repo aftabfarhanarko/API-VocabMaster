@@ -1,12 +1,14 @@
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { AuditService } from '../audit/audit.service';
 export declare class UserService {
     private readonly prisma;
-    constructor(prisma: PrismaService);
+    private readonly auditService?;
+    constructor(prisma: PrismaService, auditService?: AuditService);
     getProfile(userId: string): Promise<{
-        email: string;
         id: string;
         supabaseId: string | null;
+        email: string;
         passwordHash: string | null;
         refreshTokenHash: string | null;
         fullName: string | null;
@@ -28,9 +30,9 @@ export declare class UserService {
         updatedAt: Date;
     }>;
     updateProfile(userId: string, dto: UpdateUserDto): Promise<{
-        email: string;
         id: string;
         supabaseId: string | null;
+        email: string;
         passwordHash: string | null;
         refreshTokenHash: string | null;
         fullName: string | null;
@@ -58,10 +60,10 @@ export declare class UserService {
         timeSpentSec?: number;
     }): Promise<void>;
     getRecentActivity(userId: string, days?: number): Promise<{
+        userId: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        userId: string;
         date: string;
         wordsReviewed: number;
         wordsLearned: number;

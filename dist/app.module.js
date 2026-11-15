@@ -8,9 +8,12 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
+const core_1 = require("@nestjs/core");
 const config_1 = require("@nestjs/config");
 const throttler_1 = require("@nestjs/throttler");
 const prisma_module_1 = require("./prisma/prisma.module");
+const audit_module_1 = require("./audit/audit.module");
+const audit_interceptor_1 = require("./audit/audit.interceptor");
 const health_module_1 = require("./health/health.module");
 const auth_module_1 = require("./auth/auth.module");
 const user_module_1 = require("./user/user.module");
@@ -52,6 +55,13 @@ exports.AppModule = AppModule = __decorate([
             dashboard_module_1.DashboardModule,
             sync_module_1.SyncModule,
             health_module_1.HealthModule,
+            audit_module_1.AuditModule,
+        ],
+        providers: [
+            {
+                provide: core_1.APP_INTERCEPTOR,
+                useClass: audit_interceptor_1.AuditInterceptor,
+            },
         ],
     })
 ], AppModule);

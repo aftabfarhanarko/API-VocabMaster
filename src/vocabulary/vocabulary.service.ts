@@ -1,8 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { DictionaryService } from '../dictionary/dictionary.service';
 import { WordFilterDto } from './dto/word-filter.dto';
 import { CreateCustomWordDto } from './dto/create-custom-word.dto';
+import { AuditService } from '../audit/audit.service';
+import { AuditAction } from '../audit/audit-actions';
 
 @Injectable()
 export class VocabularyService {
@@ -10,7 +12,8 @@ export class VocabularyService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly dictionaryService: DictionaryService
+    private readonly dictionaryService: DictionaryService,
+    @Optional() private readonly auditService?: AuditService
   ) {}
 
   async findWords(userId: string, query: WordFilterDto) {
@@ -199,7 +202,7 @@ export class VocabularyService {
       throw new BadRequestException(`Custom word '${dto.word}' already exists in your vocabulary.`);
     }
 
-    return await this.prisma.vocabularyWord.create({
+    const created = await this.prisma.vocabularyWord.create({
       data: {
         word: dto.word.trim(),
         normalizedWord: normalized,
@@ -225,6 +228,18 @@ export class VocabularyService {
         examples: true,
       },
     });
+
+    if (this.auditService) {
+      this.auditService.logEvent({
+        action: AuditAction.CUSTOM_WORD_CREATED,
+        userId,
+        entity: 'VOCABULARY',
+        entityId: created.id,
+        metadata: { word: created.word, cefrLevel: created.cefrLevel },
+      });
+    }
+
+    return created;
   }
 
   async getCategories() {
@@ -267,6 +282,17 @@ export class VocabularyService {
       await this.prisma.bookmark.delete({
         where: { id: existing.id },
       });
+
+      if (this.auditService) {
+        this.auditService.logEvent({
+          action: AuditAction.WORD_UNBOOKMARKED,
+          userId,
+          entity: 'VOCABULARY',
+          entityId: word.id,
+          metadata: { word: word.word },
+        });
+      }
+
       return {
         bookmarked: false,
         wordId: word.id,
@@ -280,6 +306,17 @@ export class VocabularyService {
           wordId: word.id,
         },
       });
+
+      if (this.auditService) {
+        this.auditService.logEvent({
+          action: AuditAction.WORD_BOOKMARKED,
+          userId,
+          entity: 'VOCABULARY',
+          entityId: word.id,
+          metadata: { word: word.word },
+        });
+      }
+
       return {
         bookmarked: true,
         wordId: word.id,
