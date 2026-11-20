@@ -1,6 +1,6 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiParam, ApiQuery } from '@nestjs/swagger';
-import { DictionaryService } from './dictionary.service';
+import { DictionaryService, WordRelation } from './dictionary.service';
 
 @ApiTags('Dictionary & Translations')
 @Controller()
@@ -53,6 +53,27 @@ export class DictionaryController {
   async rawEntries(@Param('word') word: string) {
     const raw = await this.dictionaryService.getRawEntries(word);
     return raw || [];
+  }
+
+  @Get('dictionary/related/:word')
+  @ApiOperation({ summary: 'Find synonyms, antonyms, related words, topics, or rhymes via Datamuse' })
+  @ApiParam({ name: 'word', example: 'happy' })
+  @ApiQuery({ name: 'relation', enum: ['synonyms', 'antonyms', 'related', 'topics', 'rhymes'], required: false })
+  @ApiQuery({ name: 'limit', required: false, example: 10 })
+  async relatedWords(
+    @Param('word') word: string,
+    @Query('relation') relation: string = 'related',
+    @Query('limit') limit = '10',
+  ) {
+    const allowed: WordRelation[] = ['synonyms', 'antonyms', 'related', 'topics', 'rhymes'];
+    if (!allowed.includes(relation as WordRelation)) {
+      throw new BadRequestException(`relation must be one of: ${allowed.join(', ')}`);
+    }
+    return this.dictionaryService.getRelatedWords(
+      word,
+      relation as WordRelation,
+      Number.parseInt(limit, 10) || 10,
+    );
   }
 
   @Get('tts/speak')

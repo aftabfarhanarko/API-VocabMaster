@@ -1,12 +1,12 @@
 import { QuizType } from "@vocabmaster/shared";
 declare class QuizAnswerItemDto {
     questionId: string;
-    wordId: string;
+    wordId?: string;
     userAnswer: string;
-    isCorrect: boolean;
     responseTimeMs?: number;
 }
 export declare class SubmitQuizDto {
+    quizId: string;
     quizType: QuizType;
     durationSeconds: number;
     answers: QuizAnswerItemDto[];

@@ -18,6 +18,7 @@ const swagger_1 = require("@nestjs/swagger");
 const quiz_service_1 = require("./quiz.service");
 const generate_quiz_dto_1 = require("./dto/generate-quiz.dto");
 const submit_quiz_dto_1 = require("./dto/submit-quiz.dto");
+const answer_quiz_dto_1 = require("./dto/answer-quiz.dto");
 const supabase_auth_guard_1 = require("../auth/supabase-auth.guard");
 const current_user_decorator_1 = require("../auth/current-user.decorator");
 let QuizController = class QuizController {
@@ -25,11 +26,14 @@ let QuizController = class QuizController {
     constructor(quizService) {
         this.quizService = quizService;
     }
-    async generateQuiz(dto) {
-        return this.quizService.generateQuiz(dto);
+    async generateQuiz(user, dto) {
+        return this.quizService.generateQuiz(dto, user.id);
     }
     async submitQuiz(user, dto) {
         return this.quizService.submitQuiz(user.id, dto);
+    }
+    async answer(user, dto) {
+        return this.quizService.answerQuiz(user.id, dto.quizId, dto.questionId, dto.userAnswer);
     }
     async getHistory(user) {
         return this.quizService.getQuizHistory(user.id);
@@ -39,9 +43,10 @@ exports.QuizController = QuizController;
 __decorate([
     (0, common_1.Post)('generate'),
     (0, swagger_1.ApiOperation)({ summary: 'Generate dynamic quiz session questions based on type and filters' }),
-    __param(0, (0, common_1.Body)()),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [generate_quiz_dto_1.GenerateQuizDto]),
+    __metadata("design:paramtypes", [Object, generate_quiz_dto_1.GenerateQuizDto]),
     __metadata("design:returntype", Promise)
 ], QuizController.prototype, "generateQuiz", null);
 __decorate([
@@ -53,6 +58,15 @@ __decorate([
     __metadata("design:paramtypes", [Object, submit_quiz_dto_1.SubmitQuizDto]),
     __metadata("design:returntype", Promise)
 ], QuizController.prototype, "submitQuiz", null);
+__decorate([
+    (0, common_1.Post)('answer'),
+    (0, swagger_1.ApiOperation)({ summary: 'Grade one answer server-side and return feedback after submission' }),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, answer_quiz_dto_1.AnswerQuizDto]),
+    __metadata("design:returntype", Promise)
+], QuizController.prototype, "answer", null);
 __decorate([
     (0, common_1.Get)('history'),
     (0, swagger_1.ApiOperation)({ summary: 'Get past quiz session history' }),

@@ -31,17 +31,30 @@ let VocabularyService = VocabularyService_1 = class VocabularyService {
     }
     async findWords(userId, query) {
         const { search, cefrLevel, category, partOfSpeech, srsState, collectionId, page = 1, limit = 20, sortBy = 'frequencyScore', sortOrder = 'desc', source = 'database', } = query;
+        if (collectionId) {
+            const ownedCollection = await this.prisma.collection.findFirst({
+                where: { id: collectionId, userId },
+                select: { id: true },
+            });
+            if (!ownedCollection)
+                throw new common_1.NotFoundException('Collection not found.');
+        }
+        const safeSortBy = ['word', 'frequencyScore', 'createdAt'].includes(sortBy)
+            ? sortBy
+            : 'frequencyScore';
         if (source === 'freedict') {
             return (await this.dictionaryService.listFreeDictWords(page, limit));
         }
         const skip = (page - 1) * limit;
-        const where = {};
+        const where = {
+            AND: [{ OR: [{ isSystemWord: true }, { createdById: userId }] }],
+        };
         if (search) {
-            where.OR = [
-                { word: { contains: search, mode: 'insensitive' } },
-                { englishMeaning: { contains: search, mode: 'insensitive' } },
-                { banglaMeaning: { contains: search } },
-            ];
+            where.AND.push({ OR: [
+                    { word: { contains: search, mode: 'insensitive' } },
+                    { englishMeaning: { contains: search, mode: 'insensitive' } },
+                    { banglaMeaning: { contains: search } },
+                ] });
         }
         if (cefrLevel)
             where.cefrLevel = cefrLevel;
@@ -63,7 +76,7 @@ let VocabularyService = VocabularyService_1 = class VocabularyService {
             };
         }
         const orderBy = {};
-        orderBy[sortBy] = sortOrder;
+        orderBy[safeSortBy] = sortOrder === 'asc' ? 'asc' : 'desc';
         const [total, words] = await Promise.all([
             this.prisma.vocabularyWord.count({ where }),
             this.prisma.vocabularyWord.findMany({
@@ -73,6 +86,7 @@ let VocabularyService = VocabularyService_1 = class VocabularyService {
                 orderBy,
                 include: {
                     examples: true,
+                    definitions: { orderBy: { senseNumber: 'asc' } },
                     userProgress: {
                         where: { userId },
                     },
@@ -102,10 +116,14 @@ let VocabularyService = VocabularyService_1 = class VocabularyService {
         const normalized = wordOrId.trim().toLowerCase();
         const word = await this.prisma.vocabularyWord.findFirst({
             where: {
-                OR: [{ id: wordOrId }, { normalizedWord: normalized }, { word: wordOrId }],
+                AND: [
+                    { OR: [{ id: wordOrId }, { normalizedWord: normalized }, { word: wordOrId }] },
+                    { OR: [{ isSystemWord: true }, { createdById: userId }] },
+                ],
             },
             include: {
                 examples: true,
+                definitions: { orderBy: { senseNumber: 'asc' } },
                 userProgress: {
                     where: { userId },
                 },
@@ -124,20 +142,25 @@ let VocabularyService = VocabularyService_1 = class VocabularyService {
         const ext = await this.dictionaryService.lookupWord(normalized);
         if (ext) {
             const firstDef = ext.definitions?.[0];
-            const primaryMeaning = firstDef?.definition || 'Dictionary definition';
+            const primaryMeaning = firstDef?.definition || ext.word;
             const rawExamples = (ext.definitions || [])
                 .filter((d) => d.example)
                 .map((d) => ({
                 sentenceEn: d.example,
-                sentenceBn: `"${d.example}" (উদাহরণ)`,
+                sentenceBn: '',
             }));
-            const bnMeaning = ext.bengaliMeaning || primaryMeaning;
-            const cefr = ext.cefrLevel || 'B1';
+            const bnMeaning = ext.bengaliMeaning || '';
+            const cefr = ext.cefrLevel || null;
+            const posMap = {
+                NOUN: 'NOUN', VERB: 'VERB', ADJECTIVE: 'ADJECTIVE', ADVERB: 'ADVERB',
+                PRONOUN: 'PRONOUN', PREPOSITION: 'PREPOSITION', CONJUNCTION: 'CONJUNCTION',
+                INTERJECTION: 'INTERJECTION', PHRASE: 'PHRASE', IDIOM: 'IDIOM',
+            };
             const savedWord = await this.prisma.vocabularyWord.create({
                 data: {
                     word: ext.word,
                     normalizedWord: normalized,
-                    partOfSpeech: firstDef?.partOfSpeech || 'NOUN',
+                    partOfSpeech: (posMap[String(firstDef?.partOfSpeech || '').toUpperCase()] || 'NOUN'),
                     cefrLevel: cefr,
                     category: 'General Vocabulary',
                     englishMeaning: primaryMeaning,
@@ -148,13 +171,25 @@ let VocabularyService = VocabularyService_1 = class VocabularyService {
                     audioUkUrl: ext.audioUkUrl,
                     synonyms: ext.synonyms || [],
                     antonyms: ext.antonyms || [],
-                    isSystemWord: false,
+                    etymology: ext.etymology || null,
+                    dictionarySource: ext.freeDict ? 'FreeDict' : 'Free Dictionary API',
+                    isSystemWord: true,
+                    definitions: {
+                        create: (ext.definitions || []).map((definition, index) => ({
+                            partOfSpeech: this.normalizePartOfSpeech(definition.partOfSpeech || firstDef?.partOfSpeech),
+                            definitionEn: definition.definition,
+                            exampleEn: definition.example || null,
+                            senseNumber: index,
+                            source: ext.freeDict ? 'FreeDict' : 'Free Dictionary API',
+                        })),
+                    },
                     examples: {
                         create: rawExamples.slice(0, 3),
                     },
                 },
                 include: {
                     examples: true,
+                    definitions: { orderBy: { senseNumber: 'asc' } },
                 },
             });
             return {
@@ -214,8 +249,16 @@ let VocabularyService = VocabularyService_1 = class VocabularyService {
         }
         return created;
     }
-    async getCategories() {
-        const categories = [
+    normalizePartOfSpeech(value) {
+        const normalized = (value || '').toUpperCase();
+        const supported = new Set([
+            'NOUN', 'VERB', 'ADJECTIVE', 'ADVERB', 'PRONOUN', 'PREPOSITION',
+            'CONJUNCTION', 'INTERJECTION', 'PHRASE', 'IDIOM',
+        ]);
+        return supported.has(normalized) ? normalized : 'NOUN';
+    }
+    async getCategories(userId) {
+        const standardCategories = [
             'Daily Life & Essentials',
             'Academic & Education',
             'Business & Career',
@@ -227,16 +270,18 @@ let VocabularyService = VocabularyService_1 = class VocabularyService {
             'Idioms & Phrasal Verbs',
         ];
         const counts = await this.prisma.vocabularyWord.groupBy({
+            where: { OR: [{ isSystemWord: true }, { createdById: userId }] },
             by: ['category'],
             _count: { id: true },
         });
-        return categories.map((cat) => {
-            const found = counts.find((c) => c.category === cat);
-            return {
-                category: cat,
-                count: found ? found._count.id : 0,
-            };
-        });
+        const categories = new Set([
+            ...standardCategories,
+            ...counts.map((entry) => entry.category),
+        ]);
+        return Array.from(categories).map((category) => ({
+            category,
+            count: counts.find((entry) => entry.category === category)?._count.id || 0,
+        }));
     }
     async toggleBookmark(userId, wordOrId) {
         const word = await this.resolveWord(wordOrId);

@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { RedisService } from '../redis/redis.service';
 import axios from 'axios';
 
 export interface FreeDictResponse {
@@ -17,17 +18,22 @@ export interface FreeDictResponse {
   source: string;
 }
 
+export type WordRelation = 'synonyms' | 'antonyms' | 'related' | 'topics' | 'rhymes';
+
 @Injectable()
 export class DictionaryService {
   private readonly logger = new Logger(DictionaryService.name);
-  private cache = new Map<string, any>();
+  private cache = new Map<string, { expiresAt: number; value: any }>();
+  private readonly cacheTtlMs = 60 * 60 * 1000;
   private readonly freeDictApiKey: string;
   private readonly freeDictBaseUrl: string;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly redis: RedisService,
+  ) {
     this.freeDictApiKey =
-      this.configService.get<string>('FREEDICT_API_KEY') ||
-      'fd_de8a207b7f277eb4db2ca81df9b932c10f00381e525d52bf';
+      this.configService.get<string>('FREEDICT_API_KEY') || '';
     this.freeDictBaseUrl =
       this.configService.get<string>('FREEDICT_API_URL') || 'https://freedict.com/api/v1';
   }
@@ -38,6 +44,21 @@ export class DictionaryService {
   async listFreeDictWords(page: number = 1, limit: number = 20) {
     const offset = Math.max(0, (page - 1) * limit);
     const safeLimit = Math.min(100, Math.max(1, limit));
+
+    if (!this.freeDictApiKey) {
+      return {
+        data: [],
+        meta: {
+          count: 0,
+          offset,
+          limit: safeLimit,
+          has_more: false,
+          page,
+          source: 'FreeDict API',
+          unavailable: 'FREEDICT_API_KEY is not configured',
+        },
+      };
+    }
 
     try {
       const response = await axios.get(`${this.freeDictBaseUrl}/words`, {
@@ -115,9 +136,10 @@ export class DictionaryService {
     const normalized = word.trim().toLowerCase();
     const cacheKey = `freedict:${normalized}`;
 
-    if (this.cache.has(cacheKey)) {
-      return this.cache.get(cacheKey);
-    }
+    const cached = await this.getCached(cacheKey);
+    if (cached) return cached;
+
+    if (!this.freeDictApiKey) return null;
 
     try {
       const response = await axios.get(
@@ -175,7 +197,7 @@ export class DictionaryService {
         source: 'FreeDict API',
       };
 
-      this.cache.set(cacheKey, result);
+      await this.setCached(cacheKey, result);
       return result;
     } catch (err: any) {
       this.logger.debug(`FreeDict lookup error for '${word}': ${err.message}`);
@@ -190,7 +212,6 @@ export class DictionaryService {
     const normalized = word.trim().toLowerCase();
     const endpoints = [
       `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(normalized)}`,
-      `https://api.opendictionaryapi.com/entries/en/${encodeURIComponent(normalized)}`,
     ];
 
     for (const url of endpoints) {
@@ -210,9 +231,8 @@ export class DictionaryService {
    */
   async lookupWord(word: string) {
     const normalized = word.trim().toLowerCase();
-    if (this.cache.has(normalized)) {
-      return this.cache.get(normalized);
-    }
+    const cached = await this.getCached(normalized);
+    if (cached) return cached;
 
     // 1. Fetch from FreeDict (with Bangla translations + CEFR)
     const freeDictData = await this.lookupFreeDict(normalized);
@@ -290,7 +310,8 @@ export class DictionaryService {
       phoneticUk,
       audioUsUrl,
       audioUkUrl,
-      cefrLevel: freeDictData?.cefrLevel || 'B1',
+      cefrLevel: freeDictData?.cefrLevel || null,
+      etymology: openEntry?.origin || null,
       bengaliMeaning: freeDictData?.bengaliMeaning || null,
       bengaliRomanised: freeDictData?.bengaliRomanised || null,
       definitions,
@@ -300,13 +321,92 @@ export class DictionaryService {
       raw: openDictRaw,
     };
 
-    this.cache.set(normalized, result);
+    await this.setCached(normalized, result);
     return result;
+  }
+
+  private async getCached(key: string): Promise<any | undefined> {
+    const shared = await this.redis.get(`vocab:dictionary:v1:${key}`);
+    if (shared) {
+      try { return JSON.parse(shared); }
+      catch { /* Ignore corrupt cache values and refresh from the provider. */ }
+    }
+    const entry = this.cache.get(key);
+    if (!entry) return undefined;
+    if (entry.expiresAt <= Date.now()) {
+      this.cache.delete(key);
+      return undefined;
+    }
+    return entry.value;
+  }
+
+  private async setCached(key: string, value: any): Promise<void> {
+    if (this.cache.size >= 500) {
+      const oldestKey = this.cache.keys().next().value;
+      if (oldestKey) this.cache.delete(oldestKey);
+    }
+    this.cache.set(key, { value, expiresAt: Date.now() + this.cacheTtlMs });
+    await this.redis.set(`vocab:dictionary:v1:${key}`, JSON.stringify(value), this.cacheTtlMs / 1000);
   }
 
   async getRawEntries(word: string) {
     const raw = await this.lookupOpenDictionary(word);
     return raw || [];
+  }
+
+  /** Related-word suggestions from Datamuse. This is intentionally separate from
+   * definitions: Datamuse is a word-finding API, not a dictionary source. */
+  async getRelatedWords(word: string, relation: WordRelation = 'related', limit = 10) {
+    const normalized = word.trim().toLowerCase();
+    if (!/^[a-z][a-z' -]{0,79}$/i.test(normalized)) {
+      throw new BadRequestException('Word must contain only letters, spaces, apostrophes, or hyphens.');
+    }
+
+    const safeLimit = Math.min(20, Math.max(1, limit));
+    const cacheKey = `datamuse:${relation}:${normalized}:${safeLimit}`;
+    const cached = await this.getCached(cacheKey);
+    if (cached) return cached;
+
+    const relationParams: Record<Exclude<WordRelation, 'topics'>, string> = {
+      synonyms: 'rel_syn',
+      antonyms: 'rel_ant',
+      related: 'ml',
+      rhymes: 'rel_rhy',
+    };
+
+    try {
+      const response = await axios.get('https://api.datamuse.com/words', {
+        params: relation === 'topics'
+          ? { ml: normalized, topics: normalized, max: safeLimit }
+          : { [relationParams[relation]]: normalized, max: safeLimit },
+        timeout: 4000,
+        headers: { 'User-Agent': 'VocabMaster/1.0 (dictionary related-words)' },
+      });
+      const results = Array.isArray(response.data)
+        ? response.data
+            .filter((entry: any) => typeof entry?.word === 'string')
+            .slice(0, safeLimit)
+            .map((entry: any) => ({ word: entry.word, score: entry.score ?? null }))
+        : [];
+      const result = {
+        word: normalized,
+        relation,
+        data: results,
+        source: 'Datamuse',
+        attribution: 'Related word suggestions provided by Datamuse API',
+      };
+      await this.setCached(cacheKey, result);
+      return result;
+    } catch (error: any) {
+      this.logger.warn(`Datamuse lookup failed for '${normalized}': ${error.message}`);
+      return {
+        word: normalized,
+        relation,
+        data: [],
+        source: 'Datamuse',
+        unavailable: true,
+      };
+    }
   }
 
   async getAudioUrl(text: string, accent: 'US' | 'UK' | 'BN' = 'US') {

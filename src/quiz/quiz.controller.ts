@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { QuizService } from './quiz.service';
 import { GenerateQuizDto } from './dto/generate-quiz.dto';
 import { SubmitQuizDto } from './dto/submit-quiz.dto';
+import { AnswerQuizDto } from './dto/answer-quiz.dto';
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
 import { CurrentUser, AuthenticatedUser } from '../auth/current-user.decorator';
 
@@ -15,8 +16,8 @@ export class QuizController {
 
   @Post('generate')
   @ApiOperation({ summary: 'Generate dynamic quiz session questions based on type and filters' })
-  async generateQuiz(@Body() dto: GenerateQuizDto) {
-    return this.quizService.generateQuiz(dto);
+  async generateQuiz(@CurrentUser() user: AuthenticatedUser, @Body() dto: GenerateQuizDto) {
+    return this.quizService.generateQuiz(dto, user.id);
   }
 
   @Post('submit')
@@ -26,6 +27,12 @@ export class QuizController {
     @Body() dto: SubmitQuizDto
   ) {
     return this.quizService.submitQuiz(user.id, dto);
+  }
+
+  @Post('answer')
+  @ApiOperation({ summary: 'Grade one answer server-side and return feedback after submission' })
+  async answer(@CurrentUser() user: AuthenticatedUser, @Body() dto: AnswerQuizDto) {
+    return this.quizService.answerQuiz(user.id, dto.quizId, dto.questionId, dto.userAnswer);
   }
 
   @Get('history')

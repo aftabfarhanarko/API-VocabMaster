@@ -37,7 +37,7 @@ Production-ready, high-performance REST API backend for **VocabMaster** — an a
 - **Authentication**: JWT (`jsonwebtoken`), `bcryptjs`, `cookie-parser`
 - **Validation**: `class-validator`, `class-transformer`
 - **Documentation**: Swagger / OpenAPI 3.0
-- **Testing**: Jest (100% passing test suites)
+- **Testing**: Jest unit tests
 
 ---
 
@@ -114,7 +114,8 @@ Production-ready, high-performance REST API backend for **VocabMaster** — an a
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
 | `POST` | `/api/quiz/generate` | Generate dynamic quiz (MULTIPLE_CHOICE, FILL_IN_BLANK, AUDIO_LISTENING, MATCHING_PAIRS). |
-| `POST` | `/api/quiz/submit` | Submit quiz session answers, compute accuracy, and persist score to database. |
+| `POST` | `/api/quiz/answer` | Grade one response on the server and return feedback after the learner answers. |
+| `POST` | `/api/quiz/submit` | Submit a generated quiz session; score and answer key are validated on the server. |
 | `GET` | `/api/quiz/history` | Get user's past quiz sessions and scores. |
 
 ---
@@ -166,7 +167,7 @@ JWT_ACCESS_EXPIRES_IN="1h"
 JWT_REFRESH_EXPIRES_IN="7d"
 
 # FreeDict API (Bengali Translations & CEFR Dictionary)
-FREEDICT_API_KEY="fd_de8a207b7f277eb4db2ca81df9b932c10f00381e525d52bf"
+FREEDICT_API_KEY="your-server-side-freedict-api-key"
 FREEDICT_API_URL="https://freedict.com/api/v1"
 
 # Supabase Credentials (optional dual auth)
@@ -180,7 +181,11 @@ CORS_ORIGIN="http://localhost:3000"
 # Rate Limiting
 THROTTLE_TTL=60000
 THROTTLE_LIMIT=100
+REDIS_URL="rediss://default:password@redis-host:6379"
+TRUST_PROXY_HOPS=1
 ```
+
+Redis is required in production for shared dictionary cache, distributed request throttling, and temporary quiz answer keys. Use a managed Redis instance with TLS and a private network connection. Development can run without Redis, but quiz state and throttling then remain local to one process. See [docs/scaling.md](docs/scaling.md) for the Nginx load-balancer example and deployment settings.
 
 ---
 
@@ -198,7 +203,7 @@ cd backend
 npx prisma db push
 ```
 
-### 3. Run Unit Tests (29/29 passing)
+### 3. Run Unit Tests (8 suites, 41 tests)
 ```bash
 npm run test
 ```

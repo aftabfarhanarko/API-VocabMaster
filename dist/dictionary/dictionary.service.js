@@ -16,24 +16,41 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.DictionaryService = void 0;
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
+const redis_service_1 = require("../redis/redis.service");
 const axios_1 = __importDefault(require("axios"));
 let DictionaryService = DictionaryService_1 = class DictionaryService {
     configService;
+    redis;
     logger = new common_1.Logger(DictionaryService_1.name);
     cache = new Map();
+    cacheTtlMs = 60 * 60 * 1000;
     freeDictApiKey;
     freeDictBaseUrl;
-    constructor(configService) {
+    constructor(configService, redis) {
         this.configService = configService;
+        this.redis = redis;
         this.freeDictApiKey =
-            this.configService.get('FREEDICT_API_KEY') ||
-                'fd_de8a207b7f277eb4db2ca81df9b932c10f00381e525d52bf';
+            this.configService.get('FREEDICT_API_KEY') || '';
         this.freeDictBaseUrl =
             this.configService.get('FREEDICT_API_URL') || 'https://freedict.com/api/v1';
     }
     async listFreeDictWords(page = 1, limit = 20) {
         const offset = Math.max(0, (page - 1) * limit);
         const safeLimit = Math.min(100, Math.max(1, limit));
+        if (!this.freeDictApiKey) {
+            return {
+                data: [],
+                meta: {
+                    count: 0,
+                    offset,
+                    limit: safeLimit,
+                    has_more: false,
+                    page,
+                    source: 'FreeDict API',
+                    unavailable: 'FREEDICT_API_KEY is not configured',
+                },
+            };
+        }
         try {
             const response = await axios_1.default.get(`${this.freeDictBaseUrl}/words`, {
                 params: {
@@ -100,9 +117,11 @@ let DictionaryService = DictionaryService_1 = class DictionaryService {
     async lookupFreeDict(word) {
         const normalized = word.trim().toLowerCase();
         const cacheKey = `freedict:${normalized}`;
-        if (this.cache.has(cacheKey)) {
-            return this.cache.get(cacheKey);
-        }
+        const cached = await this.getCached(cacheKey);
+        if (cached)
+            return cached;
+        if (!this.freeDictApiKey)
+            return null;
         try {
             const response = await axios_1.default.get(`${this.freeDictBaseUrl}/words/${encodeURIComponent(normalized)}`, {
                 params: {
@@ -149,7 +168,7 @@ let DictionaryService = DictionaryService_1 = class DictionaryService {
                 translations: data.translations || [],
                 source: 'FreeDict API',
             };
-            this.cache.set(cacheKey, result);
+            await this.setCached(cacheKey, result);
             return result;
         }
         catch (err) {
@@ -161,7 +180,6 @@ let DictionaryService = DictionaryService_1 = class DictionaryService {
         const normalized = word.trim().toLowerCase();
         const endpoints = [
             `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(normalized)}`,
-            `https://api.opendictionaryapi.com/entries/en/${encodeURIComponent(normalized)}`,
         ];
         for (const url of endpoints) {
             try {
@@ -176,9 +194,9 @@ let DictionaryService = DictionaryService_1 = class DictionaryService {
     }
     async lookupWord(word) {
         const normalized = word.trim().toLowerCase();
-        if (this.cache.has(normalized)) {
-            return this.cache.get(normalized);
-        }
+        const cached = await this.getCached(normalized);
+        if (cached)
+            return cached;
         const freeDictData = await this.lookupFreeDict(normalized);
         const openDictRaw = await this.lookupOpenDictionary(normalized);
         const openEntry = openDictRaw?.[0];
@@ -251,7 +269,8 @@ let DictionaryService = DictionaryService_1 = class DictionaryService {
             phoneticUk,
             audioUsUrl,
             audioUkUrl,
-            cefrLevel: freeDictData?.cefrLevel || 'B1',
+            cefrLevel: freeDictData?.cefrLevel || null,
+            etymology: openEntry?.origin || null,
             bengaliMeaning: freeDictData?.bengaliMeaning || null,
             bengaliRomanised: freeDictData?.bengaliRomanised || null,
             definitions,
@@ -260,12 +279,89 @@ let DictionaryService = DictionaryService_1 = class DictionaryService {
             freeDict: freeDictData,
             raw: openDictRaw,
         };
-        this.cache.set(normalized, result);
+        await this.setCached(normalized, result);
         return result;
+    }
+    async getCached(key) {
+        const shared = await this.redis.get(`vocab:dictionary:v1:${key}`);
+        if (shared) {
+            try {
+                return JSON.parse(shared);
+            }
+            catch { }
+        }
+        const entry = this.cache.get(key);
+        if (!entry)
+            return undefined;
+        if (entry.expiresAt <= Date.now()) {
+            this.cache.delete(key);
+            return undefined;
+        }
+        return entry.value;
+    }
+    async setCached(key, value) {
+        if (this.cache.size >= 500) {
+            const oldestKey = this.cache.keys().next().value;
+            if (oldestKey)
+                this.cache.delete(oldestKey);
+        }
+        this.cache.set(key, { value, expiresAt: Date.now() + this.cacheTtlMs });
+        await this.redis.set(`vocab:dictionary:v1:${key}`, JSON.stringify(value), this.cacheTtlMs / 1000);
     }
     async getRawEntries(word) {
         const raw = await this.lookupOpenDictionary(word);
         return raw || [];
+    }
+    async getRelatedWords(word, relation = 'related', limit = 10) {
+        const normalized = word.trim().toLowerCase();
+        if (!/^[a-z][a-z' -]{0,79}$/i.test(normalized)) {
+            throw new common_1.BadRequestException('Word must contain only letters, spaces, apostrophes, or hyphens.');
+        }
+        const safeLimit = Math.min(20, Math.max(1, limit));
+        const cacheKey = `datamuse:${relation}:${normalized}:${safeLimit}`;
+        const cached = await this.getCached(cacheKey);
+        if (cached)
+            return cached;
+        const relationParams = {
+            synonyms: 'rel_syn',
+            antonyms: 'rel_ant',
+            related: 'ml',
+            rhymes: 'rel_rhy',
+        };
+        try {
+            const response = await axios_1.default.get('https://api.datamuse.com/words', {
+                params: relation === 'topics'
+                    ? { ml: normalized, topics: normalized, max: safeLimit }
+                    : { [relationParams[relation]]: normalized, max: safeLimit },
+                timeout: 4000,
+                headers: { 'User-Agent': 'VocabMaster/1.0 (dictionary related-words)' },
+            });
+            const results = Array.isArray(response.data)
+                ? response.data
+                    .filter((entry) => typeof entry?.word === 'string')
+                    .slice(0, safeLimit)
+                    .map((entry) => ({ word: entry.word, score: entry.score ?? null }))
+                : [];
+            const result = {
+                word: normalized,
+                relation,
+                data: results,
+                source: 'Datamuse',
+                attribution: 'Related word suggestions provided by Datamuse API',
+            };
+            await this.setCached(cacheKey, result);
+            return result;
+        }
+        catch (error) {
+            this.logger.warn(`Datamuse lookup failed for '${normalized}': ${error.message}`);
+            return {
+                word: normalized,
+                relation,
+                data: [],
+                source: 'Datamuse',
+                unavailable: true,
+            };
+        }
     }
     async getAudioUrl(text, accent = 'US') {
         const lang = accent === 'BN' ? 'bn' : accent === 'UK' ? 'en-GB' : 'en-US';
@@ -275,6 +371,7 @@ let DictionaryService = DictionaryService_1 = class DictionaryService {
 exports.DictionaryService = DictionaryService;
 exports.DictionaryService = DictionaryService = DictionaryService_1 = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [config_1.ConfigService])
+    __metadata("design:paramtypes", [config_1.ConfigService,
+        redis_service_1.RedisService])
 ], DictionaryService);
 //# sourceMappingURL=dictionary.service.js.map

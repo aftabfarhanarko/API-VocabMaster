@@ -65,9 +65,17 @@ describe('VocabularyService (Search, Filter, Pagination)', () => {
   });
 
   it('should get categories list with word counts', async () => {
-    const categories = await service.getCategories();
+    const groupByMock = prisma.vocabularyWord.groupBy as unknown as jest.Mock;
+    groupByMock.mockResolvedValue([
+      { category: 'My Travel Words', _count: { id: 4 } },
+    ] as any);
+    const categories = await service.getCategories('user-123');
     expect(Array.isArray(categories)).toBe(true);
     expect(categories.length).toBeGreaterThan(0);
     expect(categories[0].category).toBeDefined();
+    expect(categories).toContainEqual({ category: 'My Travel Words', count: 4 });
+    expect(groupByMock).toHaveBeenCalledWith(expect.objectContaining({
+      where: { OR: [{ isSystemWord: true }, { createdById: 'user-123' }] },
+    }));
   });
 });

@@ -98,13 +98,16 @@ model VocabularyWord {
   audioUkUrl       String?
   audioUsUrl       String?
   partOfSpeech     PartOfSpeech
-  cefrLevel        CefrLevel       @default(B1)
+  cefrLevel        CefrLevel?
   category         String
   englishMeaning   String
   banglaMeaning    String
+  etymology        String?
+  dictionarySource String?
   englishContext   String?
   banglaContext    String?
   examples         WordExample[]
+  definitions      WordDefinition[]
   synonyms         String[]        @default([])
   antonyms         String[]        @default([])
   frequencyScore   Int             @default(50)
@@ -122,6 +125,21 @@ model VocabularyWord {
   @@index([cefrLevel])
   @@index([category])
   @@index([partOfSpeech])
+}
+
+model WordDefinition {
+  id             String          @id @default(uuid())
+  wordId         String
+  partOfSpeech   PartOfSpeech
+  definitionEn   String
+  definitionBn   String?
+  exampleEn      String?
+  exampleBn      String?
+  senseNumber    Int             @default(0)
+  source         String?
+  word           VocabularyWord  @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  @@index([wordId, senseNumber])
 }
 
 model WordExample {

@@ -45,7 +45,6 @@ export interface SubmitQuizDto {
     questionId: string;
     wordId: string;
     userAnswer: string;
-    isCorrect: boolean;
     responseTimeMs?: number;
   }[];
 }

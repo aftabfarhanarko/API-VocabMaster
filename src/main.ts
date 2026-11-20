@@ -10,6 +10,11 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
+  // Honor client IP and protocol headers only from the configured trusted proxy hop(s).
+  // Set TRUST_PROXY_HOPS=0 when the service is exposed directly.
+  const trustProxyHops = Number.parseInt(process.env.TRUST_PROXY_HOPS || '1', 10);
+  app.getHttpAdapter().getInstance().set('trust proxy', Number.isFinite(trustProxyHops) ? trustProxyHops : 1);
+  app.enableShutdownHooks();
 
   // Parse HTTP Cookies (Session & Refresh tokens)
   app.use(cookieParser());

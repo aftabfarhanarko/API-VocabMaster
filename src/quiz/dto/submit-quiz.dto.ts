@@ -5,7 +5,6 @@ import {
   IsArray,
   ValidateNested,
   IsString,
-  IsBoolean,
   IsOptional,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -18,16 +17,13 @@ class QuizAnswerItemDto {
   questionId: string;
 
   @ApiProperty({ example: 'word-uuid' })
+  @IsOptional()
   @IsString()
-  wordId: string;
+  wordId?: string;
 
   @ApiProperty({ example: 'serendipity' })
   @IsString()
   userAnswer: string;
-
-  @ApiProperty({ example: true })
-  @IsBoolean()
-  isCorrect: boolean;
 
   @ApiPropertyOptional({ example: 1200 })
   @IsOptional()
@@ -36,6 +32,10 @@ class QuizAnswerItemDto {
 }
 
 export class SubmitQuizDto {
+  @ApiProperty({ example: 'quiz-session-uuid' })
+  @IsString()
+  quizId: string;
+
   @ApiProperty({ enum: QuizType, example: QuizType.MULTIPLE_CHOICE })
   @IsEnum(QuizType)
   quizType: QuizType;

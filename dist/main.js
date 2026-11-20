@@ -10,6 +10,9 @@ const transform_interceptor_1 = require("./common/interceptors/transform.interce
 async function bootstrap() {
     const logger = new common_1.Logger('Bootstrap');
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
+    const trustProxyHops = Number.parseInt(process.env.TRUST_PROXY_HOPS || '1', 10);
+    app.getHttpAdapter().getInstance().set('trust proxy', Number.isFinite(trustProxyHops) ? trustProxyHops : 1);
+    app.enableShutdownHooks();
     app.use(cookieParser());
     app.setGlobalPrefix('api');
     const envOrigins = (process.env.CORS_ORIGIN || '')

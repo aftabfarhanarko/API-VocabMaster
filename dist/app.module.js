@@ -11,6 +11,9 @@ const common_1 = require("@nestjs/common");
 const core_1 = require("@nestjs/core");
 const config_1 = require("@nestjs/config");
 const throttler_1 = require("@nestjs/throttler");
+const redis_module_1 = require("./redis/redis.module");
+const redis_service_1 = require("./redis/redis.service");
+const redis_throttler_storage_1 = require("./redis/redis-throttler.storage");
 const prisma_module_1 = require("./prisma/prisma.module");
 const audit_module_1 = require("./audit/audit.module");
 const audit_interceptor_1 = require("./audit/audit.interceptor");
@@ -36,12 +39,15 @@ exports.AppModule = AppModule = __decorate([
                 isGlobal: true,
                 envFilePath: ['.env', '.env.local'],
             }),
-            throttler_1.ThrottlerModule.forRoot([
-                {
-                    ttl: 60000,
-                    limit: 100,
-                },
-            ]),
+            redis_module_1.RedisModule,
+            throttler_1.ThrottlerModule.forRootAsync({
+                imports: [redis_module_1.RedisModule],
+                inject: [redis_service_1.RedisService],
+                useFactory: (redis) => ({
+                    throttlers: [{ ttl: 60000, limit: 100 }],
+                    storage: new redis_throttler_storage_1.RedisThrottlerStorage(redis),
+                }),
+            }),
             prisma_module_1.PrismaModule,
             auth_module_1.AuthModule,
             user_module_1.UserModule,
@@ -58,6 +64,7 @@ exports.AppModule = AppModule = __decorate([
             audit_module_1.AuditModule,
         ],
         providers: [
+            { provide: core_1.APP_GUARD, useClass: throttler_1.ThrottlerGuard },
             {
                 provide: core_1.APP_INTERCEPTOR,
                 useClass: audit_interceptor_1.AuditInterceptor,

@@ -29,8 +29,8 @@ let VocabularyController = class VocabularyController {
     async findWords(user, query) {
         return this.vocabService.findWords(user.id, query);
     }
-    async getCategories() {
-        return this.vocabService.getCategories();
+    async getCategories(user) {
+        return this.vocabService.getCategories(user.id);
     }
     async getBookmarkedWords(user, page = '1', limit = '20', search, cefrLevel) {
         return this.vocabService.getBookmarkedWords(user.id, {
@@ -69,8 +69,9 @@ __decorate([
 __decorate([
     (0, common_1.Get)('categories'),
     (0, swagger_1.ApiOperation)({ summary: 'Get list of categories with word counts' }),
+    __param(0, (0, current_user_decorator_1.CurrentUser)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], VocabularyController.prototype, "getCategories", null);
 __decorate([

@@ -34,8 +34,8 @@ export class VocabularyController {
 
   @Get('categories')
   @ApiOperation({ summary: 'Get list of categories with word counts' })
-  async getCategories() {
-    return this.vocabService.getCategories();
+  async getCategories(@CurrentUser() user: AuthenticatedUser) {
+    return this.vocabService.getCategories(user.id);
   }
 
   @Get('bookmarks')

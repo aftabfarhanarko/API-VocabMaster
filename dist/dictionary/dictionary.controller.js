@@ -38,6 +38,13 @@ let DictionaryController = class DictionaryController {
         const raw = await this.dictionaryService.getRawEntries(word);
         return raw || [];
     }
+    async relatedWords(word, relation = 'related', limit = '10') {
+        const allowed = ['synonyms', 'antonyms', 'related', 'topics', 'rhymes'];
+        if (!allowed.includes(relation)) {
+            throw new common_1.BadRequestException(`relation must be one of: ${allowed.join(', ')}`);
+        }
+        return this.dictionaryService.getRelatedWords(word, relation, Number.parseInt(limit, 10) || 10);
+    }
     async speak(text, accent = 'US') {
         const audioUrl = await this.dictionaryService.getAudioUrl(text, accent);
         return { audioUrl, text, accent };
@@ -90,6 +97,19 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], DictionaryController.prototype, "rawEntries", null);
+__decorate([
+    (0, common_1.Get)('dictionary/related/:word'),
+    (0, swagger_1.ApiOperation)({ summary: 'Find synonyms, antonyms, related words, topics, or rhymes via Datamuse' }),
+    (0, swagger_1.ApiParam)({ name: 'word', example: 'happy' }),
+    (0, swagger_1.ApiQuery)({ name: 'relation', enum: ['synonyms', 'antonyms', 'related', 'topics', 'rhymes'], required: false }),
+    (0, swagger_1.ApiQuery)({ name: 'limit', required: false, example: 10 }),
+    __param(0, (0, common_1.Param)('word')),
+    __param(1, (0, common_1.Query)('relation')),
+    __param(2, (0, common_1.Query)('limit')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, Object]),
+    __metadata("design:returntype", Promise)
+], DictionaryController.prototype, "relatedWords", null);
 __decorate([
     (0, common_1.Get)('tts/speak'),
     (0, swagger_1.ApiOperation)({ summary: 'Get fallback audio pronunciation URL for English or Bengali' }),

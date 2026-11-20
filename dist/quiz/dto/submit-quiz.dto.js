@@ -18,7 +18,6 @@ class QuizAnswerItemDto {
     questionId;
     wordId;
     userAnswer;
-    isCorrect;
     responseTimeMs;
 }
 __decorate([
@@ -28,6 +27,7 @@ __decorate([
 ], QuizAnswerItemDto.prototype, "questionId", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ example: 'word-uuid' }),
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], QuizAnswerItemDto.prototype, "wordId", void 0);
@@ -37,22 +37,23 @@ __decorate([
     __metadata("design:type", String)
 ], QuizAnswerItemDto.prototype, "userAnswer", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ example: true }),
-    (0, class_validator_1.IsBoolean)(),
-    __metadata("design:type", Boolean)
-], QuizAnswerItemDto.prototype, "isCorrect", void 0);
-__decorate([
     (0, swagger_1.ApiPropertyOptional)({ example: 1200 }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsInt)(),
     __metadata("design:type", Number)
 ], QuizAnswerItemDto.prototype, "responseTimeMs", void 0);
 class SubmitQuizDto {
+    quizId;
     quizType;
     durationSeconds;
     answers;
 }
 exports.SubmitQuizDto = SubmitQuizDto;
+__decorate([
+    (0, swagger_1.ApiProperty)({ example: 'quiz-session-uuid' }),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], SubmitQuizDto.prototype, "quizId", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({ enum: shared_1.QuizType, example: shared_1.QuizType.MULTIPLE_CHOICE }),
     (0, class_validator_1.IsEnum)(shared_1.QuizType),
